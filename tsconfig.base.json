@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@repo/types": ["packages/types/src/index.ts"],
+      "@repo/prisma": ["packages/prisma/index.ts"],
+      "@repo/proto/*": ["packages/proto/*"]
+    }
+  }
+}
