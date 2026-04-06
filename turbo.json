@@ -11,10 +11,12 @@
     },
     "start:dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["migrate", "build"]
     },
     "migrate": {
-      "cache": false
+      "cache": false,
+      "dependsOn": ["^migrate"]
     }
   }
 }

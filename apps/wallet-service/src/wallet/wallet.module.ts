@@ -17,7 +17,7 @@ import { join } from "path"
         options: {
           url: `localhost:${USER_SERVICE_PORT}`,
           package: "user",
-          protoPath: join(__dirname, "../../../packages/proto/user.proto"),
+          protoPath: join(__dirname, "../../../../../packages/proto/user.proto"),
         },
       },
     ]),

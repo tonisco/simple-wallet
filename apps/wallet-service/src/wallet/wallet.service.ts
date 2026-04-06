@@ -1,14 +1,13 @@
 import { Injectable, Inject, OnModuleInit } from "@nestjs/common"
 import { RpcException } from "@nestjs/microservices"
 import type { ClientGrpc } from "@nestjs/microservices"
-import { status } from "@grpc/grpc-js"
 import { WalletRepository } from "./wallet.repository"
 import { CreateWalletDto } from "./dto/create-wallet.dto"
 import { GetWalletDto } from "./dto/get-wallet.dto"
 import { CreditWalletDto } from "./dto/credit-wallet.dto"
 import { DebitWalletDto } from "./dto/debit-wallet.dto"
 import { Wallet } from "@prisma/client"
-import { DomainError, USER_SERVICE_GRPC } from "@repo/types"
+import { DomainError, USER_SERVICE_GRPC, ErrorMapper } from "@repo/types"
 import { PrismaService } from "@repo/prisma"
 import { firstValueFrom, Observable } from "rxjs"
 
@@ -33,21 +32,17 @@ export class WalletService implements OnModuleInit {
     try {
       await firstValueFrom(this.userService.GetUserById({ id: payload.userId }))
     } catch (err) {
-      if ((err as { code?: number })?.code === status.NOT_FOUND) {
-        throw new RpcException({
-          code: status.NOT_FOUND,
-          message: DomainError.USER_NOT_FOUND,
-        })
+      // Only remap NOT_FOUND as USER_NOT_FOUND.
+      // Other codes (UNAVAILABLE, INTERNAL, DEADLINE_EXCEEDED) propagate as-is.
+      if ((err as { code: number })?.code === 5 /* grpc NOT_FOUND */) {
+        throw new RpcException(ErrorMapper(DomainError.USER_NOT_FOUND))
       }
       throw err
     }
 
     const existing = await this.walletRepository.findByUserId(payload.userId)
     if (existing) {
-      throw new RpcException({
-        code: status.ALREADY_EXISTS,
-        message: DomainError.WALLET_ALREADY_EXISTS,
-      })
+      throw new RpcException(ErrorMapper(DomainError.WALLET_ALREADY_EXISTS))
     }
     return this.walletRepository.createWallet(payload.userId)
   }
@@ -55,10 +50,7 @@ export class WalletService implements OnModuleInit {
   async getWallet(payload: GetWalletDto): Promise<Wallet> {
     const wallet = await this.walletRepository.findByUserId(payload.userId)
     if (!wallet) {
-      throw new RpcException({
-        code: status.NOT_FOUND,
-        message: DomainError.WALLET_NOT_FOUND,
-      })
+      throw new RpcException(ErrorMapper(DomainError.WALLET_NOT_FOUND))
     }
     return wallet
   }
@@ -66,10 +58,7 @@ export class WalletService implements OnModuleInit {
   async creditWallet(payload: CreditWalletDto): Promise<Wallet> {
     const wallet = await this.walletRepository.findByUserId(payload.userId)
     if (!wallet) {
-      throw new RpcException({
-        code: status.NOT_FOUND,
-        message: DomainError.WALLET_NOT_FOUND,
-      })
+      throw new RpcException(ErrorMapper(DomainError.WALLET_NOT_FOUND))
     }
     return this.walletRepository.creditWallet(payload.userId, payload.amount)
   }
@@ -78,16 +67,10 @@ export class WalletService implements OnModuleInit {
     return this.prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.findUnique({ where: { userId: payload.userId } })
       if (!wallet) {
-        throw new RpcException({
-          code: status.NOT_FOUND,
-          message: DomainError.WALLET_NOT_FOUND,
-        })
+        throw new RpcException(ErrorMapper(DomainError.WALLET_NOT_FOUND))
       }
-      if (wallet.balance.lessThan(payload.amount)) {
-        throw new RpcException({
-          code: status.FAILED_PRECONDITION,
-          message: DomainError.INSUFFICIENT_BALANCE,
-        })
+      if (wallet.balance < payload.amount) {
+        throw new RpcException(ErrorMapper(DomainError.INSUFFICIENT_BALANCE))
       }
       return tx.wallet.update({
         where: { userId: payload.userId },

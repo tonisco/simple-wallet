@@ -16,12 +16,15 @@
         {
           "name": "[1] CreateUser — happy path",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_USER}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_USER}}/user.UserService/CreateUser",
+              "host": ["{{BASE_URL_USER}}"],
+              "path": ["user.UserService", "CreateUser"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"name\": \"Alice\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"name\": \"Alice\"\n}"
             }
           },
           "description": "Creates a new user. Automatically triggers wallet creation in the Wallet Service.\nExpected: 200 with id, email, name, createdAt.\nSave the returned `id` into the `userId` collection variable."
@@ -29,12 +32,15 @@
         {
           "name": "[2] CreateUser — duplicate email → ALREADY_EXISTS",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_USER}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_USER}}/user.UserService/CreateUser",
+              "host": ["{{BASE_URL_USER}}"],
+              "path": ["user.UserService", "CreateUser"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"name\": \"Alice Duplicate\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"name\": \"Alice Duplicate\"\n}"
             }
           },
           "description": "Expected: ERROR code=6 (ALREADY_EXISTS), message=USER_ALREADY_EXISTS"
@@ -42,12 +48,15 @@
         {
           "name": "[3] GetUserById — happy path",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_USER}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_USER}}/user.UserService/GetUserById",
+              "host": ["{{BASE_URL_USER}}"],
+              "path": ["user.UserService", "GetUserById"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{userId}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"id\": \"{{userId}}\"\n}"
             }
           },
           "description": "Expected: 200 with user fields."
@@ -55,12 +64,15 @@
         {
           "name": "[4] GetUserById — non-existent ID → NOT_FOUND",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_USER}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_USER}}/user.UserService/GetUserById",
+              "host": ["{{BASE_URL_USER}}"],
+              "path": ["user.UserService", "GetUserById"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"00000000-0000-0000-0000-000000000000\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"id\": \"nonexistent-user-id-00000000\"\n}"
             }
           },
           "description": "Expected: ERROR code=5 (NOT_FOUND), message=USER_NOT_FOUND"
@@ -73,12 +85,15 @@
         {
           "name": "[5] GetWallet — happy path (auto-created with user)",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/GetWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "GetWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
             }
           },
           "description": "Wallet is auto-created when the user is registered.\nExpected: 200 with id, userId, balance=0, createdAt."
@@ -86,25 +101,31 @@
         {
           "name": "[6] CreditWallet — happy path (+250.00)",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/CreditWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "CreditWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 250.00\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 250.00\n}"
             }
           },
-          "description": "Expected: 200 with balance=250.00"
+          "description": "Expected: 200 with balance=250"
         },
         {
           "name": "[7] CreditWallet — negative amount → INVALID_ARGUMENT",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/CreditWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "CreditWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": -50\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": -50\n}"
             }
           },
           "description": "Expected: ERROR code=3 (INVALID_ARGUMENT) from ValidationPipe"
@@ -112,25 +133,31 @@
         {
           "name": "[8] DebitWallet — happy path (-75.00)",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/DebitWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "DebitWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 75.00\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 75.00\n}"
             }
           },
-          "description": "Current balance: 250.00. After debit: 175.00.\nExpected: 200 with updated balance."
+          "description": "Current balance: 250. After debit: 175.\nExpected: 200 with updated balance."
         },
         {
           "name": "[9] DebitWallet — insufficient balance → FAILED_PRECONDITION",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/DebitWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "DebitWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 999.00\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 999.00\n}"
             }
           },
           "description": "Expected: ERROR code=9 (FAILED_PRECONDITION), message=INSUFFICIENT_BALANCE"
@@ -138,12 +165,15 @@
         {
           "name": "[10] DebitWallet — non-existent user → NOT_FOUND",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/DebitWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "DebitWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000000\",\n  \"amount\": 10\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"nonexistent-user-id-00000000\",\n  \"amount\": 10\n}"
             }
           },
           "description": "Expected: ERROR code=5 (NOT_FOUND), message=WALLET_NOT_FOUND"
@@ -151,12 +181,15 @@
         {
           "name": "[11] CreateWallet — non-existent userId → NOT_FOUND",
           "request": {
-            "method": "POST",
-            "url": "{{BASE_URL_WALLET}}",
+            "method": "GRPC",
+            "url": {
+              "raw": "{{BASE_URL_WALLET}}/wallet.WalletService/CreateWallet",
+              "host": ["{{BASE_URL_WALLET}}"],
+              "path": ["wallet.WalletService", "CreateWallet"]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000000\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"userId\": \"nonexistent-user-id-00000000\"\n}"
             }
           },
           "description": "Wallet Service calls User Service to verify the user exists first.\nExpected: ERROR code=5 (NOT_FOUND), message=USER_NOT_FOUND"

@@ -1,12 +1,11 @@
 import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common"
 import { RpcException } from "@nestjs/microservices"
 import type { ClientGrpc } from "@nestjs/microservices"
-import { status } from "@grpc/grpc-js"
 import { UserRepository } from "./user.repository"
 import { CreateUserDto } from "./dto/create-user.dto"
 import { GetUserDto } from "./dto/get-user.dto"
 import { User } from "@prisma/client"
-import { DomainError, WALLET_SERVICE_GRPC } from "@repo/types"
+import { DomainError, WALLET_SERVICE_GRPC, ErrorMapper } from "@repo/types"
 import { firstValueFrom, Observable } from "rxjs"
 
 interface IWalletServiceGrpc {
@@ -29,13 +28,13 @@ export class UserService implements OnModuleInit {
 
   async createUser(payload: CreateUserDto): Promise<User> {
     const existing = await this.userRepository.findByEmail(payload.email)
+    console.log(existing)
     if (existing) {
-      throw new RpcException({
-        code: status.ALREADY_EXISTS,
-        message: DomainError.USER_ALREADY_EXISTS,
-      })
+      throw new RpcException(ErrorMapper(DomainError.USER_ALREADY_EXISTS))
     }
     const user = await this.userRepository.createUser(payload)
+
+    console.log(user)
 
     try {
       await firstValueFrom(this.walletService.CreateWallet({ userId: user.id }))
@@ -51,10 +50,8 @@ export class UserService implements OnModuleInit {
   async getUserById(payload: GetUserDto): Promise<User> {
     const user = await this.userRepository.findById(payload.id)
     if (!user) {
-      throw new RpcException({
-        code: status.NOT_FOUND,
-        message: DomainError.USER_NOT_FOUND,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
+      throw new RpcException(ErrorMapper(DomainError.USER_NOT_FOUND))
     }
     return user
   }
