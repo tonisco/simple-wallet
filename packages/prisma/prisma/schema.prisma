@@ -8,7 +8,7 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   email     String   @unique
   name      String
   createdAt DateTime @default(now())
@@ -16,7 +16,7 @@ model User {
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String   @unique
   balance   Float    @default(0)
   createdAt DateTime @default(now())
