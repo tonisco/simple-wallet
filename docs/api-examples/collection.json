@@ -1,0 +1,167 @@
+{
+  "info": {
+    "name": "Microservice Wallet System",
+    "description": "gRPC API collection for User Service (port 50051) and Wallet Service (port 50052).\n\nRequirements:\n- Postman v10+ with gRPC support\n- User Service running on localhost:50051\n- Wallet Service running on localhost:50052\n\nSet the collection variable BASE_URL_USER = localhost:50051 and BASE_URL_WALLET = localhost:50052.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BASE_URL_USER",   "value": "localhost:50051" },
+    { "key": "BASE_URL_WALLET", "value": "localhost:50052" },
+    { "key": "userId",          "value": "" }
+  ],
+  "item": [
+    {
+      "name": "User Service",
+      "item": [
+        {
+          "name": "[1] CreateUser — happy path",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_USER}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"name\": \"Alice\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Creates a new user. Automatically triggers wallet creation in the Wallet Service.\nExpected: 200 with id, email, name, createdAt.\nSave the returned `id` into the `userId` collection variable."
+        },
+        {
+          "name": "[2] CreateUser — duplicate email → ALREADY_EXISTS",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_USER}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"name\": \"Alice Duplicate\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: ERROR code=6 (ALREADY_EXISTS), message=USER_ALREADY_EXISTS"
+        },
+        {
+          "name": "[3] GetUserById — happy path",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_USER}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: 200 with user fields."
+        },
+        {
+          "name": "[4] GetUserById — non-existent ID → NOT_FOUND",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_USER}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: ERROR code=5 (NOT_FOUND), message=USER_NOT_FOUND"
+        }
+      ]
+    },
+    {
+      "name": "Wallet Service",
+      "item": [
+        {
+          "name": "[5] GetWallet — happy path (auto-created with user)",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Wallet is auto-created when the user is registered.\nExpected: 200 with id, userId, balance=0, createdAt."
+        },
+        {
+          "name": "[6] CreditWallet — happy path (+250.00)",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 250.00\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: 200 with balance=250.00"
+        },
+        {
+          "name": "[7] CreditWallet — negative amount → INVALID_ARGUMENT",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": -50\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: ERROR code=3 (INVALID_ARGUMENT) from ValidationPipe"
+        },
+        {
+          "name": "[8] DebitWallet — happy path (-75.00)",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 75.00\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Current balance: 250.00. After debit: 175.00.\nExpected: 200 with updated balance."
+        },
+        {
+          "name": "[9] DebitWallet — insufficient balance → FAILED_PRECONDITION",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 999.00\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: ERROR code=9 (FAILED_PRECONDITION), message=INSUFFICIENT_BALANCE"
+        },
+        {
+          "name": "[10] DebitWallet — non-existent user → NOT_FOUND",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000000\",\n  \"amount\": 10\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Expected: ERROR code=5 (NOT_FOUND), message=WALLET_NOT_FOUND"
+        },
+        {
+          "name": "[11] CreateWallet — non-existent userId → NOT_FOUND",
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL_WALLET}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Wallet Service calls User Service to verify the user exists first.\nExpected: ERROR code=5 (NOT_FOUND), message=USER_NOT_FOUND"
+        }
+      ]
+    }
+  ]
+}

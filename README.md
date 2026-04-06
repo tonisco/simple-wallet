@@ -1,159 +1,228 @@
-# Turborepo starter
+# Microservice Wallet System
 
-This Turborepo starter is maintained by the Turborepo core team.
+A two-service gRPC microservice architecture built with **NestJS**, **Prisma**, and **Turborepo**.
 
-## Using this example
-
-Run the following command:
-
-```sh
-npx create-turbo@latest
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        Client (grpcurl / Postman)                │
+└─────────────────────┬──────────────────────┬─────────────────────┘
+                      │ gRPC :50051           │ gRPC :50052
+          ┌───────────▼──────────┐ ┌──────────▼──────────────┐
+          │    User Service      │ │     Wallet Service       │
+          │  CreateUser          │ │  CreateWallet            │
+          │  GetUserById         │ │  GetWallet               │
+          └─────────┬────────────┘ │  CreditWallet            │
+                    │              │  DebitWallet             │
+                    │ gRPC         └──────────┬───────────────┘
+                    │ GetUserById             │ CreateWallet
+                    └──────────────────────── ┘
+                              │
+                    ┌─────────▼─────────┐
+                    │   PostgreSQL DB    │
+                    │  (shared schema)   │
+                    └───────────────────┘
 ```
 
-## What's inside?
+## Prerequisites
 
-This Turborepo includes the following packages/apps:
+| Tool       | Version  | Install                                    |
+|------------|----------|--------------------------------------------|
+| Node.js    | 20+      | https://nodejs.org                         |
+| pnpm       | 8+       | `npm install -g pnpm`                      |
+| PostgreSQL | 14+      | https://www.postgresql.org/download/       |
+| grpcurl    | latest   | https://github.com/fullstorydev/grpcurl    |
 
-### Apps and Packages
+---
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Installation
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+All commands must be run from the `backend-assessment/` directory.
 
-### Utilities
+```bash
+# 1. Clone and enter the project
+git clone <repo-url>
+cd microservice-assessment/backend-assessment
 
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+# 2. Install all workspace dependencies
+pnpm install
 ```
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+## Environment Setup
+
+Create `.env` files for each service. Copy the examples below:
+
+**`apps/user-service/.env`**
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/wallet_system"
+LOG_LEVEL="info"
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
+**`apps/wallet-service/.env`**
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/wallet_system"
+LOG_LEVEL="info"
 ```
 
-Without global `turbo`:
+> **Note:** Both services share the same PostgreSQL database. Adjust `DATABASE_URL` to match your local Postgres credentials.
 
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+`.env` files are gitignored. Never commit them.
+
+---
+
+## Database Setup
+
+```bash
+# Run migrations (creates User and Wallet tables)
+pnpm --filter @repo/prisma exec prisma migrate dev --name init
+
+# Generate the Prisma client
+pnpm --filter @repo/prisma exec prisma generate
 ```
 
-### Develop
+---
 
-To develop all apps and packages, run the following command:
+## Running the Services
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
+```bash
+# Start both services in development mode (with watch)
+pnpm turbo run start:dev
 ```
 
-Without global `turbo`, use your package manager:
+Or run each service individually:
 
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+```bash
+# Terminal 1 — User Service (port 50051)
+pnpm --filter @app/user-service run start:dev
+
+# Terminal 2 — Wallet Service (port 50052)
+pnpm --filter @app/wallet-service run start:dev
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Both services will print structured JSON logs via `nestjs-pino`. You should see:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
+```
+{"level":"info","pid":...,"msg":"Microservice is listening..."}
 ```
 
-Without global `turbo`:
+---
 
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+## Architecture
+
+### Monorepo Structure
+
+```
+backend-assessment/
+├── apps/
+│   ├── user-service/          # gRPC service on port 50051
+│   │   └── src/user/
+│   │       ├── user.controller.ts   ← @GrpcMethod handlers
+│   │       ├── user.service.ts      ← business logic
+│   │       └── user.repository.ts  ← Prisma queries
+│   │
+│   └── wallet-service/        # gRPC service on port 50052
+│       └── src/wallet/
+│           ├── wallet.controller.ts
+│           ├── wallet.service.ts
+│           └── wallet.repository.ts
+│
+└── packages/
+    ├── types/                 # Shared: DomainError enum, ErrorMapper, gRPC constants
+    ├── proto/                 # Source-of-truth .proto files
+    └── prisma/                # Shared PrismaService + schema
 ```
 
-### Remote Caching
+### Inter-Service Communication
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+- **`CreateUser`** → after persisting the user, User Service calls `WalletService.CreateWallet` via gRPC. Wallet creation is fire-and-forget (user is still created even if wallet service is temporarily unavailable — see logs for errors).
+- **`CreateWallet`** → Wallet Service calls `UserService.GetUserById` first to verify the user exists. Returns `NOT_FOUND` if the user does not exist.
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+### Error Handling
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+All errors are mapped through `ErrorMapper` from `@repo/types`:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+| Domain Error            | gRPC Status   | Code |
+|-------------------------|---------------|------|
+| `USER_NOT_FOUND`        | NOT_FOUND     | 5    |
+| `USER_ALREADY_EXISTS`   | ALREADY_EXISTS| 6    |
+| `WALLET_NOT_FOUND`      | NOT_FOUND     | 5    |
+| `WALLET_ALREADY_EXISTS` | ALREADY_EXISTS| 6    |
+| `INSUFFICIENT_BALANCE`  | FAILED_PRECONDITION | 9 |
+| `INVALID_AMOUNT`        | INVALID_ARGUMENT | 3  |
 
-```sh
-cd my-turborepo
-turbo login
+### Wallet Balance
+
+`balance` is stored as `Decimal(12,2)` in PostgreSQL to avoid floating-point precision errors. The `DebitWallet` operation runs inside a Prisma `$transaction` to guarantee atomicity.
+
+---
+
+## API Reference
+
+Both services expose pure gRPC endpoints (no HTTP). Use [`grpcurl`](https://github.com/fullstorydev/grpcurl) or Postman (v10+ with gRPC support) to call them.
+
+### User Service — `localhost:50051`
+
+#### `CreateUser`
+```bash
+grpcurl -plaintext \
+  -d '{"email":"alice@example.com","name":"Alice"}' \
+  localhost:50051 user.UserService/CreateUser
 ```
 
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+#### `GetUserById`
+```bash
+grpcurl -plaintext \
+  -d '{"id":"<uuid>"}' \
+  localhost:50051 user.UserService/GetUserById
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+### Wallet Service — `localhost:50052`
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
+#### `GetWallet`
+```bash
+grpcurl -plaintext \
+  -d '{"userId":"<uuid>"}' \
+  localhost:50052 wallet.WalletService/GetWallet
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+#### `CreditWallet`
+```bash
+grpcurl -plaintext \
+  -d '{"userId":"<uuid>","amount":100.00}' \
+  localhost:50052 wallet.WalletService/CreditWallet
 ```
 
-## Useful Links
+#### `DebitWallet`
+```bash
+grpcurl -plaintext \
+  -d '{"userId":"<uuid>","amount":50.00}' \
+  localhost:50052 wallet.WalletService/DebitWallet
+```
 
-Learn more about the power of Turborepo:
+For the full test suite covering all happy paths and error cases, run:
 
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+```bash
+bash docs/api-examples/curl-examples.sh
+```
+
+Or import `docs/api-examples/collection.json` into Postman (File → Import).
+
+---
+
+## Building for Production
+
+```bash
+# Build all packages and apps
+pnpm turbo run build
+```
+
+TypeScript output is emitted to each app's `dist/` directory.
+
+---
+
+## Known Limitations
+
+1. **No distributed transactions** — If the Wallet Service is unavailable when a user is created, the user record is persisted but no wallet is created. The error is logged. A retry mechanism or event-driven approach (e.g. an outbox pattern) would be needed for production.
+2. **Plain-text gRPC** — Services use `-plaintext` (no TLS). Add TLS certificates before deploying to production.
+3. **Single database** — Both services share one PostgreSQL instance. For full service isolation, each service would own its own database.
