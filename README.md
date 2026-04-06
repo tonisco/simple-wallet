@@ -25,18 +25,16 @@ A two-service gRPC microservice architecture built with **NestJS**, **Prisma**, 
 
 ## Prerequisites
 
-| Tool       | Version  | Install                                    |
-|------------|----------|--------------------------------------------|
-| Node.js    | 20+      | https://nodejs.org                         |
-| pnpm       | 8+       | `npm install -g pnpm`                      |
-| PostgreSQL | 14+      | https://www.postgresql.org/download/       |
-| grpcurl    | latest   | https://github.com/fullstorydev/grpcurl    |
+| Tool       | Version | Install                                 |
+| ---------- | ------- | --------------------------------------- |
+| Node.js    | 20+     | https://nodejs.org                      |
+| pnpm       | 8+      | `npm install -g pnpm`                   |
+| PostgreSQL | 14+     | https://www.postgresql.org/download/    |
+| grpcurl    | latest  | https://github.com/fullstorydev/grpcurl |
 
 ---
 
 ## Installation
-
-All commands must be run from the `backend-assessment/` directory.
 
 ```bash
 # 1. Clone and enter the project
@@ -54,20 +52,22 @@ pnpm install
 Create `.env` files for each service. Copy the examples below:
 
 **`apps/user-service/.env`**
+
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/wallet_system"
+DATABASE_URL="file:../../packages/prisma/prisma/dev.db"
 LOG_LEVEL="info"
 ```
 
 **`apps/wallet-service/.env`**
+
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/wallet_system"
+DATABASE_URL="file:../../packages/prisma/prisma/dev.db"
 LOG_LEVEL="info"
 ```
 
-> **Note:** Both services share the same PostgreSQL database. Adjust `DATABASE_URL` to match your local Postgres credentials.
+> **Note:** Both services share the same sqlite database. Adjust `DATABASE_URL` to match your local Postgres credentials.
 
-`.env` files are gitignored. Never commit them.
+`.env` files are committed so it can be run easily but would not be in real production apps
 
 ---
 
@@ -81,13 +81,15 @@ pnpm --filter @repo/prisma exec prisma migrate dev --name init
 pnpm --filter @repo/prisma exec prisma generate
 ```
 
+> **Note:** You do not need to do this because pnpm dev does this
+
 ---
 
 ## Running the Services
 
 ```bash
 # Start both services in development mode (with watch)
-pnpm turbo run start:dev
+pnpm dev
 ```
 
 Or run each service individually:
@@ -142,14 +144,14 @@ backend-assessment/
 
 All errors are mapped through `ErrorMapper` from `@repo/types`:
 
-| Domain Error            | gRPC Status   | Code |
-|-------------------------|---------------|------|
-| `USER_NOT_FOUND`        | NOT_FOUND     | 5    |
-| `USER_ALREADY_EXISTS`   | ALREADY_EXISTS| 6    |
-| `WALLET_NOT_FOUND`      | NOT_FOUND     | 5    |
-| `WALLET_ALREADY_EXISTS` | ALREADY_EXISTS| 6    |
-| `INSUFFICIENT_BALANCE`  | FAILED_PRECONDITION | 9 |
-| `INVALID_AMOUNT`        | INVALID_ARGUMENT | 3  |
+| Domain Error            | gRPC Status         | Code |
+| ----------------------- | ------------------- | ---- |
+| `USER_NOT_FOUND`        | NOT_FOUND           | 5    |
+| `USER_ALREADY_EXISTS`   | ALREADY_EXISTS      | 6    |
+| `WALLET_NOT_FOUND`      | NOT_FOUND           | 5    |
+| `WALLET_ALREADY_EXISTS` | ALREADY_EXISTS      | 6    |
+| `INSUFFICIENT_BALANCE`  | FAILED_PRECONDITION | 9    |
+| `INVALID_AMOUNT`        | INVALID_ARGUMENT    | 3    |
 
 ### Wallet Balance
 
@@ -164,6 +166,7 @@ Both services expose pure gRPC endpoints (no HTTP). Use [`grpcurl`](https://gith
 ### User Service — `localhost:50051`
 
 #### `CreateUser`
+
 ```bash
 grpcurl -plaintext \
   -d '{"email":"alice@example.com","name":"Alice"}' \
@@ -171,6 +174,7 @@ grpcurl -plaintext \
 ```
 
 #### `GetUserById`
+
 ```bash
 grpcurl -plaintext \
   -d '{"id":"<uuid>"}' \
@@ -180,6 +184,7 @@ grpcurl -plaintext \
 ### Wallet Service — `localhost:50052`
 
 #### `GetWallet`
+
 ```bash
 grpcurl -plaintext \
   -d '{"userId":"<uuid>"}' \
@@ -187,6 +192,7 @@ grpcurl -plaintext \
 ```
 
 #### `CreditWallet`
+
 ```bash
 grpcurl -plaintext \
   -d '{"userId":"<uuid>","amount":100.00}' \
@@ -194,11 +200,21 @@ grpcurl -plaintext \
 ```
 
 #### `DebitWallet`
+
 ```bash
 grpcurl -plaintext \
   -d '{"userId":"<uuid>","amount":50.00}' \
   localhost:50052 wallet.WalletService/DebitWallet
 ```
+
+### Docs
+
+API examples live in `docs/api-examples/`:
+
+| File | Purpose |
+| ---- | ------- |
+| `docs/api-examples/curl-examples.sh` | Shell script covering all happy paths and error cases |
+| `docs/api-examples/collection.json` | Postman collection (File → Import) |
 
 For the full test suite covering all happy paths and error cases, run:
 
